@@ -5,8 +5,11 @@ db = SQLAlchemy()
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name= db.Column(db.String(250), nullable=False)
+    email = db.Column(db.String(250), nullable=False, unique=True)
+    password = db.Column(db.String(2500), nullable=False)
     location= db.Column(db.String(250), nullable=False)
     is_active = db.Column(db.Boolean(), unique=False, nullable=False)
+    #favorites = db.relationship('Favorite', backref='user', lazy=True)
 
     def __repr__(self):
         return '<User %r>' % self.username
@@ -15,6 +18,7 @@ class User(db.Model):
         return {
             "id": self.id,
             "name": self.name,
+            "email": self.email,
             "location": self.location,
             "is_active": self.is_active
             # do not serialize the password, its a security breach
@@ -77,8 +81,6 @@ class Favorite(db.Model):
     user_id = db.Column(db.Integer, default=0)
     planet_id = db.Column(db.Integer, default=0)
     people_id = db.Column(db.Integer, default=0)
-
-
 
     def __repr__(self):
         return '<Favorites %r>' % self.id

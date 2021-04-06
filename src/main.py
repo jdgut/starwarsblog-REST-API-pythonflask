@@ -9,16 +9,55 @@ from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import db, User, People, Planet, Favorite
+
+from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required, JWTManager
 #from models import Person
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DB_CONNECTION_STRING')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Setup the Flask-JWT-Extended extension
+app.config["JWT_SECRET_KEY"] = os.environ.get('JWT_SECRET_KEY')
+jwt = JWTManager(app)
+
+
 MIGRATE = Migrate(app, db)
 db.init_app(app)
 CORS(app)
 setup_admin(app)
+
+
+# Create a route to authenticate your users and return JWTs. The
+# create_access_token() function is used to actually generate the JWT.
+@app.route("/create-token", methods=["POST"])
+def login():
+    email = request.json.get("email", None)
+    password = request.json.get("password", None)
+    
+    user = User.query.filter_by(email=email, password=password).first()
+
+    if user is None:
+        raise APIException('Invalid Email/Password', status_code=401)
+
+    access_token = create_access_token(identity=user.id)
+    return jsonify(access_token=access_token), 200
+
+# Protect a route with jwt_required, which will kick out requests
+# without a valid JWT present.
+@app.route("/protected", methods=["GET"])
+@jwt_required()
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user_id = get_jwt_identity()
+    return jsonify(user_id=current_user_id), 200
+
+@app.route("/user", methods=['POST'])
+def create_user():
+    user_id = 100
+    access_token = create_access_token(identity=user_id)
+    return jsonify(access_token=access_token), 200
 
 
 @app.route('/users')
@@ -26,11 +65,19 @@ def handle_users():
     users = list(map(lambda user: user.serialize(), User.query.filter_by(is_active=1).all())) 
     return jsonify(users), 200
 
-@app.route('/users/<int:user_id>/favorites', methods=['GET', 'POST'])
+@app.route('/users/favorites', methods=['GET', 'POST'])
 def handle_user_favorites(user_id):
-    # get only the ones named "Joe"
-    favorites = list(map(lambda favorite: favorite.serialize(), Favorite.query.filter_by(user_id=user_id).all()))
 
+    if request.post:
+        posted_data = request.get_json()
+
+        if planet_id in posted_data:
+            planet_id = posted_data['planet_id']
+
+        if people_id in posted_data:
+            people_id = posted_data['people_id']
+
+    favorites = list(map(lambda favorite: favorite.serialize(), Favorite.query.filter_by(user_id=user_id).all()))
     if not favorites:
        raise APIException('No favorites assigned', status_code=404)
 
@@ -42,7 +89,7 @@ def handle_user_favorites(user_id):
 @app.route('/people')
 def handle_people():
     people = list(map(lambda character: character.serialize(), People.query.all()))
-    return jsonify(people), 200
+    return jsonify(results=people), 200
 
 @app.route('/people/<int:people_id>')
 def handle_people_details(people_id):
@@ -56,7 +103,7 @@ def handle_people_details(people_id):
 @app.route('/planets')
 def handle_planets():
     planets = list(map(lambda planet: planet.serialize(), Planet.query.all()))
-    return jsonify(planets), 200
+    return jsonify(results=planets), 200
 
 @app.route('/planets/<int:planet_id>')
 def handle_planet_details(planet_id):
