@@ -33,8 +33,8 @@ setup_admin(app)
 # create_access_token() function is used to actually generate the JWT.
 @app.route("/create-token", methods=["POST"])
 def login():
-    email = request.json.get("email1", None)
-    password = request.json.get("password1", None)
+    email = request.json.get("email", None)
+    password = request.json.get("password", None)
     
     user = User.query.filter_by(email=email, password=password).first()
 
