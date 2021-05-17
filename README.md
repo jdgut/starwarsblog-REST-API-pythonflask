@@ -1,4 +1,4 @@
-Updating the readme file
+Updating the README.md file
 
 # Flask Boilerplate for Profesional Development
 
