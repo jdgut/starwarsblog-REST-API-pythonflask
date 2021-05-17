@@ -38,6 +38,8 @@ def login():
     
     user = User.query.filter_by(email=email, password=password).first()
 
+    newVariable = "this is a string"
+
     if user is None:
         raise APIException('Invalid Email/Password', status_code=401)
 
